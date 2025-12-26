@@ -1,6 +1,6 @@
 # Qunix OS
 
-A production-grade, POSIX-compatible operating system kernel written entirely in **Rust**.
+An experimental, POSIX-compatible operating system kernel written entirely in **Rust**.
 
 Qunix OS is a bare-metal, monolithic kernel focused on **security**, **correctness**, and **POSIX compliance**, while maintaining a clean and modular architecture.
 
