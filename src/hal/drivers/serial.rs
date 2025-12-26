@@ -53,7 +53,7 @@ pub fn read_byte() -> Option<u8> {
     })
 }
 
-fn serial_data_available(serial: &SerialPort) -> bool {
+fn serial_data_available(_serial: &SerialPort) -> bool {
     unsafe {
         let mut status_port = x86_64::instructions::port::Port::<u8>::new(COM1_PORT + 5);
         (status_port.read() & 0x01) != 0

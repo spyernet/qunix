@@ -12,10 +12,10 @@ const STACK_SIZE: usize = 4096 * 5;
 #[repr(C, align(16))]
 struct Stack([u8; STACK_SIZE]);
 
-static mut DOUBLE_FAULT_STACK: Stack = Stack([0; STACK_SIZE]);
-static mut PAGE_FAULT_STACK: Stack = Stack([0; STACK_SIZE]);
-static mut GP_FAULT_STACK: Stack = Stack([0; STACK_SIZE]);
-static mut PRIVILEGE_STACK: Stack = Stack([0; STACK_SIZE]);
+static DOUBLE_FAULT_STACK: Stack = Stack([0; STACK_SIZE]);
+static PAGE_FAULT_STACK: Stack = Stack([0; STACK_SIZE]);
+static GP_FAULT_STACK: Stack = Stack([0; STACK_SIZE]);
+static PRIVILEGE_STACK: Stack = Stack([0; STACK_SIZE]);
 
 lazy_static! {
     static ref TSS: TaskStateSegment = {

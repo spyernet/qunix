@@ -1,7 +1,6 @@
-use crate::fs::{FsResult, FsError, FileStat, FileMode};
-use crate::fs::vfs::api::{OpenFlags, SeekFrom};
+use crate::fs::{FsResult, FsError, FileStat};
+use crate::fs::vfs::api::OpenFlags;
 use alloc::string::String;
-use alloc::vec::Vec;
 
 pub fn posix_open(path: &str, flags: i32, mode: u32) -> FsResult<i32> {
     let open_flags = OpenFlags::from_bits_truncate(flags as u32);
@@ -21,7 +20,7 @@ pub fn posix_close(fd: i32) -> FsResult<()> {
     Ok(())
 }
 
-pub fn posix_read(fd: i32, buf: &mut [u8]) -> FsResult<usize> {
+pub fn posix_read(fd: i32, _buf: &mut [u8]) -> FsResult<usize> {
     if fd < 0 {
         return Err(FsError::InvalidArgument);
     }
@@ -48,7 +47,7 @@ pub fn posix_write(fd: i32, buf: &[u8]) -> FsResult<usize> {
     Err(FsError::InvalidArgument)
 }
 
-pub fn posix_lseek(fd: i32, offset: i64, whence: i32) -> FsResult<u64> {
+pub fn posix_lseek(fd: i32, _offset: i64, _whence: i32) -> FsResult<u64> {
     if fd < 0 {
         return Err(FsError::InvalidArgument);
     }

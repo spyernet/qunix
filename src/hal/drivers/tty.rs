@@ -3,8 +3,7 @@ use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 use spin::Mutex;
 use lazy_static::lazy_static;
-use crate::hal::drivers::vga::{WRITER, Color};
-use crate::hal::drivers::keyboard;
+use crate::hal::drivers::vga::WRITER;
 use crate::print;
 
 const TTY_BUFFER_SIZE: usize = 4096;

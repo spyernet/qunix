@@ -1,12 +1,10 @@
 use x86_64::{
     VirtAddr, PhysAddr,
     structures::paging::{
-        PageTable, PageTableFlags, PhysFrame, Page, Size4KiB,
-        page_table::PageTableEntry,
+        PageTableFlags, PhysFrame, Size4KiB,
     },
     registers::control::{Cr0, Cr0Flags, Cr3, Cr4, Cr4Flags},
 };
-use spin::Mutex;
 
 pub const PAGE_SIZE: usize = 4096;
 pub const PAGE_SHIFT: usize = 12;

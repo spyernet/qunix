@@ -1,5 +1,4 @@
-use x86_64::registers::control::Cr3;
-use x86_64::VirtAddr;
+
 
 #[derive(Debug, Clone, Copy)]
 pub struct Context {

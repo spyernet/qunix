@@ -6,6 +6,9 @@ extern crate alloc;
 
 use core::ffi::c_char;
 use alloc::string::String;
+use alloc::vec::Vec;
+use alloc::format;
+use alloc::string::ToString;
 use crate::userland::libc;
 
 // ============== Cat - concatenate and print files ==============
@@ -60,7 +63,7 @@ pub fn cat_main(argc: i32, argv: *const *const c_char) -> i32 {
 pub fn echo_main(argc: i32, argv: *const *const c_char) -> i32 {
     for i in 1..argc {
         if i > 1 {
-            libc::write(libc::STDOUT_FILENO, b" ", 1);
+            libc::write(libc::STDOUT_FILENO, b" ".as_ptr() as *const u8, 1);
         }
 
         let cstr = unsafe { *argv.add(i as usize) };
@@ -68,7 +71,7 @@ pub fn echo_main(argc: i32, argv: *const *const c_char) -> i32 {
         libc::write(libc::STDOUT_FILENO, cstr as *const u8, len);
     }
 
-    libc::write(libc::STDOUT_FILENO, b"\n", 1);
+    libc::write(libc::STDOUT_FILENO, b"\n".as_ptr() as *const u8, 1);
     0
 }
 
@@ -86,7 +89,7 @@ pub fn pwd_main() -> i32 {
 
     let len = libc::strlen(buf.as_ptr() as *const c_char);
     libc::write(libc::STDOUT_FILENO, buf.as_ptr(), len);
-    libc::write(libc::STDOUT_FILENO, b"\n", 1);
+    libc::write(libc::STDOUT_FILENO, b"\n".as_ptr() as *const u8, 1);
     0
 }
 

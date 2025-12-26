@@ -1,7 +1,9 @@
-use crate::fs::{FsResult, FsError};
+use crate::fs::{FsError};
 use crate::kernel::scheduler::{SCHEDULER, Pid};
 use alloc::string::String;
+use alloc::string::ToString;
 use alloc::vec::Vec;
+use crate::fs::vfs::api as vfs_api;
 
 pub const SYS_READ: u64 = 0;
 pub const SYS_WRITE: u64 = 1;
@@ -116,13 +118,28 @@ fn sys_read(fd: i32, buf: *mut u8, count: usize) -> i64 {
         return -14;
     }
     
-    let scheduler = SCHEDULER.lock();
-    if let Some(task) = scheduler.current() {
-        if task.fds.contains_key(&fd) {
-            return count as i64;
+    let mut scheduler = SCHEDULER.lock();
+    if let Some(task) = scheduler.current_mut() {
+        if let Some(fd_entry) = task.get_fd_mut(fd) {
+            // Build buffer
+            let slice = unsafe { core::slice::from_raw_parts_mut(buf, count) };
+            // Lookup node
+            let vfs = crate::fs::vfs::vfs::VFS.lock();
+            match vfs.lookup_path(&fd_entry.path) {
+                Ok(node) => {
+                    match node.read(fd_entry.offset, slice) {
+                        Ok(bytes_read) => {
+                            fd_entry.offset += bytes_read as u64;
+                            return bytes_read as i64;
+                        }
+                        Err(e) => return fs_error_to_errno(e),
+                    }
+                }
+                Err(e) => return fs_error_to_errno(e),
+            }
         }
     }
-    
+
     -9
 }
 
@@ -145,27 +162,75 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> i64 {
         return count as i64;
     }
     
-    // For other fds: check if exists in task's fd table
-    let scheduler = SCHEDULER.lock();
-    if let Some(task) = scheduler.current() {
-        if task.fds.contains_key(&fd) {
-            // In a full implementation, would write to VFS
-            return count as i64;
+    // For other fds: check if exists in task's fd table and write via VFS or device
+    let mut scheduler = SCHEDULER.lock();
+    if let Some(task) = scheduler.current_mut() {
+        if let Some(fd_entry) = task.get_fd_mut(fd) {
+            let path = fd_entry.path.clone();
+            let offset = fd_entry.offset;
+            let slice = unsafe { core::slice::from_raw_parts(buf, count) };
+            
+            let mut vfs = crate::fs::vfs::vfs::VFS.lock();
+            // Get inode first, then drop the immutable borrow
+            let inode = match vfs.lookup_path(&path) {
+                Ok(node) => node.inode,
+                Err(e) => return fs_error_to_errno(e),
+            };
+            
+            match vfs.write_node(inode, offset, slice) {
+                Ok(written) => {
+                    fd_entry.offset += written as u64;
+                    return written as i64;
+                }
+                Err(e) => return fs_error_to_errno(e),
+            }
         }
     }
-    
+
     -9  // EBADF
 }
 
 fn sys_open(_pathname: *const u8, _flags: i32, _mode: u32) -> i64 {
-    // Framework: File descriptor 3+ for opened files
-    // In a full implementation, would:
-    // 1. Validate path pointer
-    // 2. Call VFS open
-    // 3. Store FileDescriptor in task's fd table
-    // 4. Return new fd number
-    // For now, return fd=3 for testing
-    3
+    if _pathname.is_null() {
+        return -14; // EFAULT
+    }
+
+    // Extract path string
+    let path_vec = unsafe {
+        let mut bytes = Vec::new();
+        let mut ptr = _pathname;
+        while *ptr != 0 {
+            bytes.push(*ptr);
+            ptr = ptr.add(1);
+            if bytes.len() > 4096 { break; }
+        }
+        bytes
+    };
+
+    let path = match core::str::from_utf8(&path_vec) {
+        Ok(s) => s.to_string(),
+        Err(_) => return -14,
+    };
+
+    // Validate via VFS open
+    let open_flags = vfs_api::OpenFlags::from_bits_truncate(_flags as u32);
+    match crate::fs::vfs::api::open(&path, open_flags, _mode as u16) {
+        Ok(_) => {
+            let mut scheduler = SCHEDULER.lock();
+            if let Some(task) = scheduler.current_mut() {
+                let newfd = task.allocate_fd();
+                task.fds.insert(newfd, crate::kernel::scheduler::task::FileDescriptor {
+                    fd: newfd,
+                    path: path.clone(),
+                    offset: 0,
+                    flags: _flags as u32,
+                });
+                return newfd as i64;
+            }
+            -3
+        }
+        Err(e) => fs_error_to_errno(e),
+    }
 }
 
 fn sys_close(fd: i32) -> i64 {
@@ -201,7 +266,7 @@ fn sys_getpid() -> i64 {
 fn sys_getppid() -> i64 {
     let scheduler = SCHEDULER.lock();
     if let Some(task) = scheduler.current() {
-        task.parent_pid.map_or(1, |pid| pid as i64)
+        task.ppid.map_or(1, |pid| pid as i64)
     } else {
         1
     }
@@ -246,28 +311,31 @@ fn sys_getegid() -> i64 {
 fn sys_fork() -> i64 {
     let mut scheduler = SCHEDULER.lock();
     
-    if let Some(parent_task) = scheduler.current_mut() {
-        let child_pid = scheduler.allocate_pid();
-        
-        // Clone the parent task as child
-        match parent_task.fork(child_pid) {
-            Ok(child_task) => {
-                // Add child to scheduler
-                let cloned_child = child_task.clone();
-                scheduler.add_task(child_task);
-                
-                // Update parent's children list
-                if let Some(parent) = scheduler.current_mut() {
-                    parent.children.push(child_pid);
-                }
-                
-                // Parent returns child PID
-                child_pid as i64
-            }
-            Err(_) => -12,  // ENOMEM
-        }
+    // Get the current task and clone it BEFORE calling allocate_pid
+    let cloned_parent = if let Some(parent_task) = scheduler.current() {
+        parent_task.clone()
     } else {
-        -3  // ESRCH (no such process)
+        return -3;  // ESRCH (no such process)
+    };
+    
+    // Now allocate PID (this doesn't conflict with the clone)
+    let child_pid = scheduler.allocate_pid();
+    
+    // Clone the parent task as child
+    match cloned_parent.fork(child_pid) {
+        Ok(child_task) => {
+            // Add child to scheduler
+            scheduler.add_task(child_task);
+            
+            // Update parent's children list
+            if let Some(parent) = scheduler.current_mut() {
+                parent.children.push(child_pid);
+            }
+            
+            // Parent returns child PID
+            child_pid as i64
+        }
+        Err(_) => -12,  // ENOMEM
     }
 }
 
@@ -335,30 +403,79 @@ fn sys_mkdir(pathname: *const u8, _mode: u32) -> i64 {
     if pathname.is_null() {
         return -14;
     }
-    
-    // Framework: directory creation
-    // In full impl: call VFS mkdir
-    0
+    // Extract path
+    let path_vec = unsafe {
+        let mut bytes = Vec::new();
+        let mut ptr = pathname;
+        while *ptr != 0 {
+            bytes.push(*ptr);
+            ptr = ptr.add(1);
+            if bytes.len() > 4096 { break; }
+        }
+        bytes
+    };
+
+    let path = match core::str::from_utf8(&path_vec) {
+        Ok(s) => s,
+        Err(_) => return -14,
+    };
+
+    match crate::fs::vfs::api::mkdir(path, _mode as u16) {
+        Ok(()) => 0,
+        Err(e) => fs_error_to_errno(e),
+    }
 }
 
 fn sys_rmdir(pathname: *const u8) -> i64 {
     if pathname.is_null() {
         return -14;
     }
-    
-    // Framework: directory removal
-    // In full impl: call VFS rmdir
-    0
+    let path_vec = unsafe {
+        let mut bytes = Vec::new();
+        let mut ptr = pathname;
+        while *ptr != 0 {
+            bytes.push(*ptr);
+            ptr = ptr.add(1);
+            if bytes.len() > 4096 { break; }
+        }
+        bytes
+    };
+
+    let path = match core::str::from_utf8(&path_vec) {
+        Ok(s) => s,
+        Err(_) => return -14,
+    };
+
+    match crate::fs::vfs::api::rmdir(path) {
+        Ok(()) => 0,
+        Err(e) => fs_error_to_errno(e),
+    }
 }
 
 fn sys_unlink(pathname: *const u8) -> i64 {
     if pathname.is_null() {
         return -14;
     }
-    
-    // Framework: file deletion
-    // In full impl: call VFS unlink
-    0
+    let path_vec = unsafe {
+        let mut bytes = Vec::new();
+        let mut ptr = pathname;
+        while *ptr != 0 {
+            bytes.push(*ptr);
+            ptr = ptr.add(1);
+            if bytes.len() > 4096 { break; }
+        }
+        bytes
+    };
+
+    let path = match core::str::from_utf8(&path_vec) {
+        Ok(s) => s,
+        Err(_) => return -14,
+    };
+
+    match crate::fs::vfs::api::unlink(path) {
+        Ok(()) => 0,
+        Err(e) => fs_error_to_errno(e),
+    }
 }
 
 fn sys_execve(pathname: *const u8, argv: *const *const u8, envp: *const *const u8) -> i64 {
@@ -436,11 +553,61 @@ fn sys_wait4(pid: i32, status: *mut i32, flags: i32, _rusage: *const u8) -> i64 
 }
 
 fn sys_stat(_pathname: *const u8, _stat_buf: *mut u8) -> i64 {
-    -38
+    if _pathname.is_null() || _stat_buf.is_null() {
+        return -14;
+    }
+
+    // extract path
+    let path_vec = unsafe {
+        let mut bytes = Vec::new();
+        let mut ptr = _pathname;
+        while *ptr != 0 {
+            bytes.push(*ptr);
+            ptr = ptr.add(1);
+            if bytes.len() > 4096 { break; }
+        }
+        bytes
+    };
+
+    let path = match core::str::from_utf8(&path_vec) {
+        Ok(s) => s,
+        Err(_) => return -14,
+    };
+
+    match crate::kernel::sys::posix::posix_stat(path) {
+        Ok(posix_stat) => {
+            // copy PosixStat bytes into buffer (caller expects struct)
+            let src = &posix_stat as *const crate::kernel::sys::posix::PosixStat as *const u8;
+            let size = core::mem::size_of::<crate::kernel::sys::posix::PosixStat>();
+            unsafe { core::ptr::copy_nonoverlapping(src, _stat_buf, size); }
+            0
+        }
+        Err(e) => fs_error_to_errno(e),
+    }
 }
 
 fn sys_fstat(_fd: i32, _stat_buf: *mut u8) -> i64 {
-    -38
+    if _stat_buf.is_null() {
+        return -14;
+    }
+
+    let mut scheduler = SCHEDULER.lock();
+    if let Some(task) = scheduler.current_mut() {
+        if let Some(fd_entry) = task.get_fd(_fd) {
+            match crate::fs::vfs::api::stat(&fd_entry.path) {
+                Ok(stat) => {
+                    let pos = crate::kernel::sys::posix::PosixStat::from(stat);
+                    let src = &pos as *const crate::kernel::sys::posix::PosixStat as *const u8;
+                    let size = core::mem::size_of::<crate::kernel::sys::posix::PosixStat>();
+                    unsafe { core::ptr::copy_nonoverlapping(src, _stat_buf, size); }
+                    return 0;
+                }
+                Err(e) => return fs_error_to_errno(e),
+            }
+        }
+    }
+
+    -9
 }
 
 fn sys_chmod(_pathname: *const u8, _mode: u32) -> i64 {
@@ -478,9 +645,9 @@ fn sys_dup(oldfd: i32) -> i64 {
     let mut scheduler = SCHEDULER.lock();
     if let Some(task) = scheduler.current_mut() {
         if let Some(fd) = task.get_fd(oldfd) {
+            let descriptor = fd.clone();
             let newfd = task.allocate_fd();
-            let new_descriptor = fd.clone();
-            task.fds.insert(newfd, new_descriptor);
+            task.fds.insert(newfd, descriptor);
             return newfd as i64;
         }
     }
@@ -534,3 +701,21 @@ pub const ERANGE: i32 = 34;
 pub const ENOSYS: i32 = 38;
 pub const ENOTEMPTY: i32 = 39;
 pub const ELOOP: i32 = 40;
+fn fs_error_to_errno(e: FsError) -> i64 {
+    match e {
+        FsError::NotFound => -2,
+        FsError::PermissionDenied => -13,
+        FsError::AlreadyExists => -17,
+        FsError::NotDirectory => -20,
+        FsError::IsDirectory => -21,
+        FsError::NotEmpty => -39,
+        FsError::InvalidPath => -22,
+        FsError::InvalidArgument => -22,
+        FsError::IoError => -5,
+        FsError::NoSpace => -28,
+        FsError::ReadOnly => -30,
+        FsError::TooManyLinks => -31,
+        FsError::NameTooLong => -36,
+        _ => -38,
+    }
+}

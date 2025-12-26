@@ -8,7 +8,6 @@ use x86_64::{
         PageTableFlags,
         Size4KiB,
         FrameAllocator,
-        Translate,
     },
     structures::paging::mapper::{MapToError, UnmapError},
     VirtAddr,

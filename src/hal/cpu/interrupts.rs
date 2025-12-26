@@ -2,7 +2,6 @@ use x86_64::structures::idt::InterruptStackFrame;
 use pic8259::ChainedPics;
 use spin::Mutex;
 use lazy_static::lazy_static;
-use crate::{print, println};
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
@@ -105,7 +104,7 @@ pub fn end_of_interrupt(irq: u8) {
 }
 
 pub fn set_irq_mask(irq: u8, masked: bool) {
-    let mut pics = PICS.lock();
+    let _pics = PICS.lock();
     
     if irq < 8 {
         let mut port = x86_64::instructions::port::Port::<u8>::new(0x21);

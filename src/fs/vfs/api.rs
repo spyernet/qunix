@@ -2,7 +2,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use spin::Mutex;
 use lazy_static::lazy_static;
-use crate::fs::{FileMode, FileStat, FsResult, FsError};
+use crate::fs::{FileStat, FsResult, FsError, FileMode};
 use super::vfs::VFS;
 
 bitflags::bitflags! {

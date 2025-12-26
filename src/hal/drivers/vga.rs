@@ -180,6 +180,7 @@ impl Writer {
         }
     }
 
+    #[allow(dead_code)]
     fn update_cursor(&self) {
         let pos = self.row_position * BUFFER_WIDTH + self.column_position;
         

@@ -8,7 +8,4 @@ pub mod tty;
 pub mod pit;
 
 pub use vga::*;
-pub use serial::*;
-pub use keyboard::*;
-pub use pci::*;
-pub use pit::*;
+pub use serial::write_string;

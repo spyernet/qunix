@@ -6,6 +6,8 @@ extern crate alloc;
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use alloc::format;
+use alloc::string::ToString;
 use core::ffi::c_char;
 use crate::userland::libc;
 
@@ -108,11 +110,11 @@ impl Shell {
     fn builtin_echo(&self, args: &[String]) -> i32 {
         for (i, arg) in args.iter().enumerate() {
             if i > 0 {
-                libc::write(libc::STDOUT_FILENO, b" ", 1);
+                libc::write(libc::STDOUT_FILENO, b" ".as_ptr() as *const u8, 1);
             }
             libc::write(libc::STDOUT_FILENO, arg.as_ptr() as *const u8, arg.len());
         }
-        libc::write(libc::STDOUT_FILENO, b"\n", 1);
+        libc::write(libc::STDOUT_FILENO, b"\n".as_ptr() as *const u8, 1);
         0
     }
 

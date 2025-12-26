@@ -1,7 +1,10 @@
-use crate::kernel::scheduler::{SCHEDULER, Task, TaskState, Pid};
-use crate::fs::{FsResult, FsError};
-use alloc::string::String;
-use alloc::vec::Vec;
+use crate::kernel::scheduler::Scheduler;
+use crate::kernel::scheduler::SCHEDULER;
+use crate::kernel::scheduler::Pid;
+use crate::fs::FsError;
+use crate::fs::FsResult;
+use crate::kernel::scheduler::TaskState;
+
 
 pub fn posix_fork() -> FsResult<Pid> {
     Err(FsError::NotSupported)
@@ -52,7 +55,7 @@ pub fn posix_getpid() -> Pid {
 pub fn posix_getppid() -> Pid {
     let scheduler = SCHEDULER.lock();
     scheduler.current()
-        .and_then(|t| t.parent_pid)
+        .and_then(|t| t.ppid)
         .unwrap_or(1)
 }
 

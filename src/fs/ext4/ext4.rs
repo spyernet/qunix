@@ -1,4 +1,3 @@
-use core::ptr;
 use core::mem::offset_of;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;

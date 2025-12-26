@@ -6,7 +6,8 @@ use alloc::vec;
 use crate::fs::{FileMode, FileStat, FileType, FsResult, FsError};
 use crate::fs::vfs::node::{VfsNode, VfsNodeData, DirEntry, Filesystem, InodeNumber};
 use crate::fs::ext4::ext4::BlockDevice;
-use super::fat::{Fat32Bpb, FatTable, FAT32_EOC};
+use super::fat::FatTable;
+use crate::fs::fat32::Fat32Bpb;
 use super::dir::{Fat32DirEntry, Fat32LfnEntry, decode_long_name, DIR_ENTRY_SIZE};
 
 pub struct Fat32Filesystem {

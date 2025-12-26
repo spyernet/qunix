@@ -1,6 +1,6 @@
-use crate::kernel::scheduler::{SCHEDULER, Pid};
 use crate::fs::{FsResult, FsError};
-use alloc::collections::BTreeMap;
+use crate::kernel::scheduler::SCHEDULER;
+use crate::kernel::scheduler::Pid;
 
 pub const SIGHUP: i32 = 1;
 pub const SIGINT: i32 = 2;

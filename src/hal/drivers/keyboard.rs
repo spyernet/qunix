@@ -1,6 +1,4 @@
 extern crate alloc;
-use alloc::vec::Vec;
-use alloc::collections::VecDeque;
 
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 use spin::Mutex;
@@ -8,6 +6,7 @@ use lazy_static::lazy_static;
 
 const KEYBOARD_BUFFER_SIZE: usize = 256;
 
+#[allow(dead_code)]
 struct CharRingBuffer {
     buf: [char; KEYBOARD_BUFFER_SIZE],
     head: usize,
@@ -15,6 +14,7 @@ struct CharRingBuffer {
     full: bool,
 }
 
+#[allow(dead_code)]
 impl CharRingBuffer {
     const fn new() -> Self {
         Self {
@@ -73,6 +73,7 @@ impl CharRingBuffer {
     }
 }
 
+#[allow(dead_code)]
 struct U8RingBuffer {
     buf: [u8; KEYBOARD_BUFFER_SIZE],
     head: usize,
@@ -80,6 +81,7 @@ struct U8RingBuffer {
     full: bool,
 }
 
+#[allow(dead_code)]
 impl U8RingBuffer {
     const fn new() -> Self {
         Self {

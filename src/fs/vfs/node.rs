@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use alloc::sync::Arc;
 use spin::RwLock;
 use crate::fs::{FileMode, FileStat, FileType, FsResult, FsError};
+use crate::hal::drivers::{tty, serial};
 
 pub type InodeNumber = u64;
 
@@ -222,6 +223,32 @@ impl VfsNode {
                 data[offset..offset + buf.len()].copy_from_slice(buf);
                 self.size = data.len() as u64;
                 Ok(buf.len())
+            }
+            VfsNodeData::Device(dev) => {
+                // Simple device dispatch: major 1 -> TTY, otherwise send to serial
+                if dev.major == 1 {
+                    // Write bytes as UTF-8 string when possible
+                    if let Ok(s) = core::str::from_utf8(buf) {
+                        tty::write_to_tty(tty::get_current_tty(), s);
+                    } else {
+                        for &b in buf {
+                            // best-effort single-byte to string
+                            let b_arr = [b];
+                            let s = core::str::from_utf8(&b_arr).unwrap_or(" ");
+                            tty::write_to_tty(tty::get_current_tty(), s);
+                        }
+                    }
+                    Ok(buf.len())
+                } else {
+                    if let Ok(s) = core::str::from_utf8(buf) {
+                        serial::write_string(s);
+                    } else {
+                        for &b in buf {
+                            serial::write_byte(b);
+                        }
+                    }
+                    Ok(buf.len())
+                }
             }
             _ => Err(FsError::InvalidArgument),
         }

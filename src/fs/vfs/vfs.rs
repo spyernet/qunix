@@ -138,6 +138,28 @@ impl VirtualFileSystem {
         
         Ok(node)
     }
+
+    pub fn create_device(&mut self, path: &str, device: super::node::DeviceId, mode: FileMode) -> FsResult<VfsNode> {
+        let (parent_path, name) = self.get_parent_and_name(path)?;
+
+        let parent_inode = {
+            let parent = self.lookup_path(&parent_path)?;
+            if !parent.is_dir() {
+                return Err(FsError::NotDirectory);
+            }
+            parent.inode
+        };
+
+        let inode = self.alloc_inode();
+        let node = VfsNode::new_char_device(name.clone(), inode, device, mode.0 & 0o7777);
+
+        self.nodes.insert(inode, node.clone());
+
+        let parent = self.nodes.get_mut(&parent_inode).ok_or(FsError::NotFound)?;
+        parent.add_entry(DirEntry::new(name, inode, FileType::CharDevice))?;
+
+        Ok(node)
+    }
     
     pub fn create_directory(&mut self, path: &str, mode: FileMode) -> FsResult<VfsNode> {
         let (parent_path, name) = self.get_parent_and_name(path)?;
@@ -327,6 +349,10 @@ pub fn init_vfs() {
     vfs.create_directory("/sbin", FileMode::new(0o755)).ok();
     vfs.create_directory("/etc", FileMode::new(0o755)).ok();
     vfs.create_directory("/dev", FileMode::new(0o755)).ok();
+    // Create standard device nodes
+    vfs.create_device("/dev/stdin", super::node::DeviceId::new(1, 0), FileMode::new(FileMode::S_IFCHR | 0o666)).ok();
+    vfs.create_device("/dev/stdout", super::node::DeviceId::new(1, 1), FileMode::new(FileMode::S_IFCHR | 0o666)).ok();
+    vfs.create_device("/dev/stderr", super::node::DeviceId::new(1, 2), FileMode::new(FileMode::S_IFCHR | 0o666)).ok();
     vfs.create_directory("/proc", FileMode::new(0o555)).ok();
     vfs.create_directory("/sys", FileMode::new(0o555)).ok();
     vfs.create_directory("/tmp", FileMode::new(0o1777)).ok();
