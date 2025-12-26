@@ -19,4 +19,4 @@ Qunix is under active development and currently boots in QEMU, with core kernel 
 
 ## License
 
-MIT
+See LICENCE file in source root
