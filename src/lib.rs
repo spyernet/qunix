@@ -14,6 +14,8 @@ pub mod hal;
 pub mod kernel;
 pub mod fs;
 pub mod qsf;
+pub mod userland;
+
 
 use core::panic::PanicInfo;
 

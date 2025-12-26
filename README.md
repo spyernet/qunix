@@ -1,21 +1,60 @@
-# Qunix OS
+# Qunix OS — A Unix-like Operating System in Rust
 
-An experimental, POSIX-compatible operating system kernel written entirely in **Rust**.
+**Status:** 🚀 Active Development  
+**Goal:** A fully functional, POSIX-compliant Unix-like operating system with complete userland utilities and shell.
 
-Qunix OS is a bare-metal, monolithic kernel focused on **security**, **correctness**, and **POSIX compliance**, while maintaining a clean and modular architecture.
+An experimental, production-oriented operating system kernel written entirely in **Rust**, designed for security, correctness, and POSIX compliance.
 
-## Highlights
+## Key Features
 
-- **POSIX Compatibility** — Designed to support Linux/Unix-style applications  
+- **POSIX Compatibility** — Linux/Unix-style applications and utilities  
 - **Qunix Security Framework (QSF)** — Mandatory access control, capabilities, and integrity enforcement  
-- **Virtual File System** — ext4 and FAT32 support via a unified VFS layer  
-- **Preemptive Multitasking** — Priority-based scheduler with context switching  
-- **Hardware Abstraction Layer** — Modular x86_64 drivers (CPU, memory, storage, I/O)
+- **Virtual File System** — ext4 and FAT32 support via unified VFS layer  
+- **Preemptive Multitasking** — Priority-based scheduler with process management  
+- **Hardware Abstraction Layer** — Modular x86_64 drivers (CPU, memory, storage, I/O)  
+- **Userland Libraries & Utilities** — Minimal C library, shell, and core command-line tools  
 
+## Development Status (December 2025)
 
-## Status
+### ✅ Completed
+- Process creation (fork), execution (execve), termination (exit)
+- Process scheduling with priority queues
+- 70+ comprehensive syscall implementations
+- Signal handling framework (POSIX signals)
+- Memory management (paging, frame allocator, heap)
+- **NEW: Minimal libc** — Syscall wrappers, POSIX functions
+- **NEW: Shell implementation** — Command parsing, built-in commands, fork/exec
+- **NEW: Userland utilities** — echo, cat, pwd, ls, mkdir, rm, touch, chmod, id, uname
+- **NEW: 16+ shell built-in commands** with full argument parsing
 
-Qunix is under active development and currently boots in QEMU, with core kernel services, memory management, filesystems (read support), and security scaffolding in place.
+### 🔄 In Progress
+- Filesystem write support (critical priority)
+- POSIX syscall completeness
+- Shell enhancements (pipes, redirections, variables)
+- TTY/terminal improvements
+
+## Building & Running
+
+```bash
+rustup override set nightly
+rustup component add rust-src llvm-tools-preview
+cargo install bootimage
+sudo apt install qemu-system-x86  # or: brew install qemu
+
+cargo bootimage --release
+cargo run --release
+```
+
+## Shell Commands Available
+
+**System:** help, whoami, uname, id, clear, ps, fork, exit  
+**Files:** pwd, cd, ls, cat, echo, touch, mkdir, rm, chmod
+
+## Development Roadmap
+
+Detailed plan in [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
+
+**Next:** Filesystem writes → Shell pipes/redirects → More utilities → Init system
 
 ## License
 

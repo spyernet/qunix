@@ -87,11 +87,11 @@ pub fn handle_shell_input(input: &str) {
         return;
     }
 
-    let mut args: [&str; 8] = [""; 8];
+    let mut args: [&str; 16] = [""; 16];
     let mut count = 0;
     let mut iter = input.split_whitespace();
     while let Some(token) = iter.next() {
-        if count < 8 {
+        if count < 16 {
             args[count] = token;
             count += 1;
         } else {
@@ -106,28 +106,58 @@ pub fn handle_shell_input(input: &str) {
     let actual_args = &args[1..count];
 
     match command {
+        // System commands
         "help" => cmd_help(),
         "whoami" => cmd_whoami(),
         "uname" => cmd_uname(),
         "pwd" => cmd_pwd(),
-        "echo" => cmd_echo(actual_args),
         "clear" => cmd_clear(),
         "ps" => cmd_ps(),
+        "id" => cmd_id(),
         "exit" => cmd_exit(),
+        
+        // File commands
+        "echo" => cmd_echo(actual_args),
+        "cat" => cmd_cat(actual_args),
+        "ls" => cmd_ls(actual_args),
+        "mkdir" => cmd_mkdir(actual_args),
+        "rm" => cmd_rm(actual_args),
+        "touch" => cmd_touch(actual_args),
+        "cd" => cmd_cd(actual_args),
+        "chmod" => cmd_chmod(actual_args),
+        
+        // Process commands
+        "fork" => cmd_fork(),
+        
         _ => println!("command not found: {}", command),
     }
 }
 
 fn cmd_help() {
     println!("Qunix Shell - Available Commands:");
-    println!("  help    - Show this help message");
-    println!("  whoami  - Print current user");
-    println!("  uname   - Print system information");
-    println!("  pwd     - Print working directory");
-    println!("  echo    - Echo text to terminal");
-    println!("  clear   - Clear the screen");
-    println!("  ps      - List running processes");
-    println!("  exit    - Exit shell (disabled in init)");
+    println!();
+    println!("System Info:");
+    println!("  help      - Show this help message");
+    println!("  whoami    - Print current user");
+    println!("  uname     - Print system information");
+    println!("  id        - Print user ID information");
+    println!();
+    println!("File Operations:");
+    println!("  pwd       - Print working directory");
+    println!("  cd [DIR]  - Change directory");
+    println!("  ls [DIR]  - List directory contents");
+    println!("  cat [FILE]- Display file contents");
+    println!("  echo      - Echo text to terminal");
+    println!("  touch     - Create empty file");
+    println!("  mkdir     - Create directory");
+    println!("  rm        - Remove file");
+    println!("  chmod     - Change file permissions");
+    println!();
+    println!("System:");
+    println!("  clear     - Clear the screen");
+    println!("  ps        - List running processes");
+    println!("  fork      - Test fork syscall");
+    println!("  exit      - Exit shell (disabled in init)");
 }
 
 fn cmd_uname() {
@@ -172,4 +202,99 @@ fn cmd_ps() {
 
 fn cmd_exit() {
     println!("Cannot exit from init shell. Use 'reboot' to restart.");
+}
+fn cmd_id() {
+    println!("uid=0(root) gid=0(root) groups=0(root)");
+}
+
+// ========== File Operation Commands ==========
+
+fn cmd_cat(args: &[&str]) {
+    if args.is_empty() {
+        println!("Usage: cat <file>");
+        return;
+    }
+    
+    for filename in args {
+        println!("(cat would read: {})", filename);
+    }
+}
+
+fn cmd_ls(args: &[&str]) {
+    let dir = if args.is_empty() { "/" } else { args[0] };
+    println!("Listing directory: {}", dir);
+    println!("(filesystem read not fully implemented)");
+}
+
+fn cmd_mkdir(args: &[&str]) {
+    if args.is_empty() {
+        println!("Usage: mkdir <directory>");
+        return;
+    }
+    
+    for dirname in args {
+        println!("(mkdir would create: {})", dirname);
+    }
+}
+
+fn cmd_rm(args: &[&str]) {
+    if args.is_empty() {
+        println!("Usage: rm <file>");
+        return;
+    }
+    
+    for filename in args {
+        println!("(rm would delete: {})", filename);
+    }
+}
+
+fn cmd_touch(args: &[&str]) {
+    if args.is_empty() {
+        println!("Usage: touch <file>");
+        return;
+    }
+    
+    for filename in args {
+        println!("(touch would create: {})", filename);
+    }
+}
+
+fn cmd_cd(args: &[&str]) {
+    if args.is_empty() {
+        println!("Usage: cd <directory>");
+        return;
+    }
+    
+    let newdir = args[0];
+    println!("(cd would change to: {})", newdir);
+}
+
+fn cmd_chmod(args: &[&str]) {
+    if args.len() < 2 {
+        println!("Usage: chmod <mode> <file>");
+        return;
+    }
+    
+    println!("(chmod {} {})", args[0], args[1]);
+}
+
+fn cmd_fork() {
+    // Use inline assembly to call fork syscall
+    let pid: i32 = unsafe {
+        let result: i64;
+        core::arch::asm!(
+            "mov rax, 57; syscall",
+            out("rax") result,
+            options(nostack, preserves_flags)
+        );
+        result as i32
+    };
+    
+    if pid == 0 {
+        println!("[CHILD] This is the child process");
+    } else if pid > 0 {
+        println!("[PARENT] Forked child process: {}", pid);
+    } else {
+        println!("fork() failed with error code: {}", pid);
+    }
 }
