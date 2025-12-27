@@ -12,7 +12,6 @@ pub mod info;
 /// Execute a shell command with arguments
 pub fn execute(command: &str, args: &[&str]) {
     use crate::serial_println;
-    use crate::serial_print;
     
     match command {
         // System commands
@@ -48,121 +47,24 @@ pub fn execute(command: &str, args: &[&str]) {
         },
         
         // Info commands
-        "whoami" => {
-            serial_println!("root");
-        },
-        "id" => {
-            serial_println!("uid=0(root) gid=0(root) groups=0(root)");
-        },
-        "uname" => {
-            serial_println!("Qunix 1.0 x86_64");
-        },
-        "pwd" => {
-            serial_println!("/");
-        },
+        "whoami" => info::whoami::run(),
+        "id" => info::id::run(),
+        "uname" => info::uname::run(),
+        "pwd" => info::pwd::run(),
         
         // File commands
-        "echo" => {
-            for (i, arg) in args.iter().enumerate() {
-                if i > 0 { 
-                    serial_print!(" ");
-                }
-                serial_print!("{}", arg);
-            }
-            serial_println!();
-        },
-        "cat" => {
-            if args.is_empty() {
-                serial_println!("Usage: cat <file>");
-            } else {
-                for filename in args {
-                    serial_println!("(cat would read: {})", filename);
-                }
-            }
-        },
-        "ls" => {
-            let dir = if args.is_empty() { "/" } else { args[0] };
-            serial_println!("Listing directory: {}", dir);
-            serial_println!("(filesystem read not fully implemented)");
-        },
-        "touch" => {
-            if args.is_empty() {
-                serial_println!("Usage: touch <file>");
-            } else {
-                for filename in args {
-                    serial_println!("(touch would create: {})", filename);
-                }
-            }
-        },
-        "mkdir" => {
-            if args.is_empty() {
-                serial_println!("Usage: mkdir <directory>");
-            } else {
-                for dirname in args {
-                    serial_println!("(mkdir would create: {})", dirname);
-                }
-            }
-        },
-        "rm" => {
-            if args.is_empty() {
-                serial_println!("Usage: rm <file>");
-            } else {
-                for filename in args {
-                    serial_println!("(rm would delete: {})", filename);
-                }
-            }
-        },
-        "cd" => {
-            if args.is_empty() {
-                serial_println!("Usage: cd <directory>");
-            } else {
-                let newdir = args[0];
-                serial_println!("(cd would change to: {})", newdir);
-            }
-        },
-        "chmod" => {
-            if args.len() < 2 {
-                serial_println!("Usage: chmod <mode> <file>");
-            } else {
-                serial_println!("(chmod {} {})", args[0], args[1]);
-            }
-        },
+        "echo" => file::echo::run(args),
+        "cat" => file::cat::run(args),
+        "ls" => file::ls::run(args),
+        "touch" => file::touch::run(args),
+        "mkdir" => file::mkdir::run(args),
+        "rm" => file::rm::run(args),
+        "cd" => file::cd::run(args),
+        "chmod" => file::chmod::run(args),
         
         // Process commands
-        "ps" => {
-            serial_println!(" PID  NAME");
-            use crate::kernel::scheduler::SCHEDULER;
-            match SCHEDULER.try_lock() {
-                Some(scheduler) => {
-                    for task in scheduler.get_tasks() {
-                        serial_println!("  {}  {}", task.pid, task.name);
-                    }
-                }
-                None => {
-                    serial_println!("  1   init");
-                    serial_println!("(scheduler busy, showing init only)");
-                }
-            }
-        },
-        "fork" => {
-            let pid: i32 = unsafe {
-                let result: i64;
-                core::arch::asm!(
-                    "mov rax, 57; syscall",
-                    out("rax") result,
-                    options(nostack, preserves_flags)
-                );
-                result as i32
-            };
-            
-            if pid == 0 {
-                serial_println!("[CHILD] This is the child process");
-            } else if pid > 0 {
-                serial_println!("[PARENT] Forked child process: {}", pid);
-            } else {
-                serial_println!("fork() failed with error code: {}", pid);
-            }
-        },
+        "ps" => process::ps::run(),
+        "fork" => process::fork::run(),
         
         _ => {
             serial_println!("command not found: {}", command);

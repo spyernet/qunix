@@ -1,5 +1,5 @@
 // whoami - Print current user
 
 pub fn run() {
-    crate::println!("root");
+    crate::serial_println!("root");
 }

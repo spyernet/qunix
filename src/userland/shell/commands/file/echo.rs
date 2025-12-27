@@ -3,9 +3,9 @@
 pub fn run(args: &[&str]) {
     for (i, arg) in args.iter().enumerate() {
         if i > 0 { 
-            crate::print!(" "); 
+            crate::serial_print!(" "); 
         }
-        crate::print!("{}", arg);
+        crate::serial_print!("{}", arg);
     }
-    crate::println!();
+    crate::serial_println!();
 }

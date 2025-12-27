@@ -9,11 +9,3 @@ pub mod rm;
 pub mod cd;
 pub mod chmod;
 
-pub use echo::*;
-pub use cat::*;
-pub use ls::*;
-pub use touch::*;
-pub use mkdir::*;
-pub use rm::*;
-pub use cd::*;
-pub use chmod::*;

@@ -1,11 +1,15 @@
 // cd - Change directory
 
 pub fn run(args: &[&str]) {
-    if args.is_empty() {
-        crate::println!("Usage: cd <directory>");
-        return;
-    }
+    let target = if args.is_empty() { "/root" } else { args[0] };
     
-    let newdir = args[0];
-    crate::println!("(cd would change to: {})", newdir);
+    let mut vfs = crate::fs::vfs::VFS.lock();
+    match vfs.set_cwd(target) {
+        Ok(_) => {
+            // Silent on success like real cd
+        }
+        Err(e) => {
+            crate::serial_println!("cd: error changing to '{}': {:?}", target, e);
+        }
+    }
 }

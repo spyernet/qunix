@@ -13,10 +13,10 @@ pub fn run() {
     };
     
     if pid == 0 {
-        crate::println!("[CHILD] This is the child process");
+        crate::serial_println!("[CHILD] This is the child process");
     } else if pid > 0 {
-        crate::println!("[PARENT] Forked child process: {}", pid);
+        crate::serial_println!("[PARENT] Forked child process: {}", pid);
     } else {
-        crate::println!("fork() failed with error code: {}", pid);
+        crate::serial_println!("fork() failed with error code: {}", pid);
     }
 }
