@@ -19,28 +19,43 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     println!("=====================================");
     println!("Secure. POSIX-Compliant. Rust-Built.");
     println!();
+    
+    qunix::serial_println!("=====================================");
+    qunix::serial_println!("Qunix OS v{}", env!("CARGO_PKG_VERSION"));
+    qunix::serial_println!("Secure. POSIX-Compliant. Rust-Built.");
+    qunix::serial_println!("=====================================");
 
     println!("[BOOT] Initializing Hardware Abstraction Layer...");
+    qunix::serial_println!("[BOOT] Initializing Hardware Abstraction Layer...");
 
     // CRITICAL BOOT ORDER (DO NOT CHANGE):
     // 1. VGA/Serial already initialized by bootloader
     // 2. Frame allocator from boot_info memory map (MUST be first)
     hal::memory::frame_allocator::init_from_boot_info(&boot_info.memory_map);
     println!("[BOOT] Frame allocator initialized");
+    qunix::serial_println!("[BOOT] Frame allocator initialized");
 
     // 3. CPU setup (GDT, IDT, interrupts)
     hal::init(boot_info);
     println!("[BOOT] HAL initialized successfully");
+    qunix::serial_println!("[BOOT] HAL initialized successfully");
 
     // 4. Kernel subsystems (scheduler, VFS, etc.)
     println!("[BOOT] Initializing kernel subsystems...");
+    qunix::serial_println!("[BOOT] Initializing kernel subsystems...");
     kernel::init();
     println!("[BOOT] Kernel initialized successfully");
+    qunix::serial_println!("[BOOT] Kernel initialized successfully");
 
     println!();
     println!("[BOOT] Qunix kernel boot complete!");
     println!("[BOOT] Starting init process (PID 1)...");
     println!();
+    
+    qunix::serial_println!();
+    qunix::serial_println!("[BOOT] Qunix kernel boot complete!");
+    qunix::serial_println!("[BOOT] Starting init process (PID 1)...");
+    qunix::serial_println!();
 
     #[cfg(test)]
     test_main();

@@ -53,6 +53,44 @@ pub fn read_byte() -> Option<u8> {
     })
 }
 
+pub fn read_byte_blocking() -> u8 {
+    loop {
+        if let Some(byte) = read_byte() {
+            return byte;
+        }
+        x86_64::instructions::hlt();
+    }
+}
+
+pub fn read_line(buffer: &mut [u8]) -> usize {
+    let mut len = 0;
+    
+    loop {
+        let byte = read_byte_blocking();
+        
+        match byte {
+            b'\n' | b'\r' => {
+                _print(format_args!("\n"));
+                break;
+            }
+            8 | 127 => { // Backspace (0x08) or DEL (0x7F)
+                if len > 0 {
+                    len -= 1;
+                    _print(format_args!("\u{8} \u{8}"));
+                }
+            }
+            _ if len < buffer.len() => {
+                buffer[len] = byte;
+                len += 1;
+                _print(format_args!("{}", byte as char));
+            }
+            _ => {}
+        }
+    }
+    
+    len
+}
+
 fn serial_data_available(_serial: &SerialPort) -> bool {
     unsafe {
         let mut status_port = x86_64::instructions::port::Port::<u8>::new(COM1_PORT + 5);
